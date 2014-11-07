@@ -101,6 +101,16 @@ public class CompositeKey implements WritableComparable<CompositeKey>{
 		return cID.hashCode();
 	}
 	
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder("cID: ");
+		sb.append(cID.toString());
+		sb.append(", tID: ");
+		sb.append(tID.get());
+		
+		return sb.toString();
+	}
+	
 	/**
 	 * Uses the customerID information to partition the KVs to the reducers.
 	 */

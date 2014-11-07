@@ -1,5 +1,3 @@
-package edu.capsl.fdp.training;
-
 /*	
  * Copyright (C) 2014 Computer Architecture and Parallel Systems Laboratory (CAPSL)	
  *
@@ -29,77 +27,30 @@ package edu.capsl.fdp.training;
  * COVERED CODE IS AUTHORIZED HEREUNDER EXCEPT UNDER THIS DISCLAIMER.
  */
 
+package edu.capsl.fdp.training;
+
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class MCTraining {
-
 	
-	public static class TrSeqBuilderMap extends Mapper<LongWritable, Text, CompositeKey, Text> {
-		
-		private final Log LOG = LogFactory.getLog(TrSeqBuilderMap.class);
-		private CompositeKey outkey = new CompositeKey();
-		private Text trType = new Text();
-		
-		@Override
-		protected void map(LongWritable key, Text value,
-				Mapper<LongWritable, Text, CompositeKey, Text>.Context context)
-				throws IOException, InterruptedException {
-
-			// each record has the format cID, tID, tType
-			String[] tokens = value.toString().split(",");
-			
-			if (tokens.length == 3) {
-				String cID = tokens[0].trim();
-				long tID = Long.parseLong(tokens[1].trim());
-				String tType = tokens[2].trim();
-				
-				// creating the composite key
-				outkey.setcID(cID);
-				outkey.settID(tID);
-				
-				// setting the transaction type
-				trType.set(tType);
-				
-				LOG.info("emitting " + outkey + ":" + trType);
-				
-				context.write(outkey, trType);
-				
-			} else {
-				LOG.warn("The tokens' length is not 3, intead is " + tokens.length);
-			}
-		}
-	}
+	static String USAGE = "What?";
 	
-	public static class TrSeqBuilderRed extends Reducer<CompositeKey, Text, Text, Text> {
-		@Override
-		protected void reduce(CompositeKey key, Iterable<Text> values,
-				Reducer<CompositeKey, Text, Text, Text>.Context context)
-				throws IOException, InterruptedException {
-			
-			System.out.println("Key: " + key.getcID());
-			
-			for (Text val : values)
-				System.out.print(val.toString() + ", ");
-			
-			System.out.println();
-		}
-	}
-	
-	
-	
-	public static Job getSequenceBuilderJob(String[] args) throws IllegalArgumentException, IOException {
+	/**
+	 * Returns the job that performers the sequence creation from the transaction input data
+	 * @param input String that represents the path in HDFS that has the input dataset
+	 * @param working_path Path in HDFS to store the temporal/output data
+	 * @return Job instance
+	 * @throws IOException
+	 */
+	public static Job getSequenceBuilderJob(String input, String working_path) throws IOException {
 		Configuration conf = new Configuration();
 	    
 	    Job job = new Job(conf);
@@ -107,7 +58,7 @@ public class MCTraining {
 		job.setJarByClass(MCTraining.class);
 		
 	    // mapper configuration
-	    job.setMapperClass(TrSeqBuilderMap.class);
+	    job.setMapperClass(SequenceBuilderMap.class);
 	    job.setMapOutputKeyClass(CompositeKey.class);
 	    job.setMapOutputValueClass(Text.class);
 	    
@@ -117,23 +68,71 @@ public class MCTraining {
 	    job.setSortComparatorClass(CompositeKey.CompositeKeySortComparator.class);
 	    
 	    // reducer configuration
-	    job.setReducerClass(TrSeqBuilderRed.class);
-	    job.setOutputKeyClass(Text.class);
-	    job.setOutputValueClass(Text.class);
-	    FileInputFormat.addInputPath(job, new Path(args[0]));
+	    job.setReducerClass(SequenceBuilderRed.class);
+	    job.setOutputKeyClass(TransitionWritable.class);
+	    job.setOutputValueClass(IntWritable.class);
+	    FileInputFormat.addInputPath(job, new Path(input));
 	    
-	    FileOutputFormat.setOutputPath(job,
-	      new Path(args[1]));
+	    String tmp_out = (working_path.charAt(working_path.length()-1) == '/' ? "seq_out" : "/seq_out");
+	    FileOutputFormat.setOutputPath(job, new Path(working_path + tmp_out));
+	    
+	    return job;
+	}
+	
+	/**
+	 * Returns the job that performers the Markov chain training
+	 * 
+	 * @param input String that represents the path in HDFS that has the input dataset
+	 * @param working_path Path in HDFS to store the temporal/output data
+	 * @return Job instance
+	 * @throws IOException
+	 */
+	public static Job getMarkovChainTrainingJob(String working_path) throws IOException {
+		
+		Configuration conf = new Configuration();
+	    
+	    Job job = new Job(conf);
+	    job.setJobName("Markov chain model training");
+		job.setJarByClass(MCTraining.class);
+		
+	    // mapper configuration
+	    job.setMapperClass(MarkovChainModelMap.class);
+	    job.setMapOutputKeyClass(TransitionWritable.class);
+	    job.setMapOutputValueClass(IntWritable.class);
+	    
+	    // reducer configuration
+	    job.setReducerClass(MarkovChainModelRed.class);
+	    job.setOutputKeyClass(TransitionWritable.class);
+	    job.setOutputValueClass(IntWritable.class);
+	    
+	    String seq_out = (working_path.charAt(working_path.length()-1) == '/' ? "seq_out" : "/seq_out");
+	    FileInputFormat.addInputPath(job, new Path(working_path + seq_out));
+	    
+	    String out = (working_path.charAt(working_path.length()-1) == '/' ? "mc_out" : "/mc_out");
+	    FileOutputFormat.setOutputPath(job, new Path(working_path + out));
 	    
 	    return job;
 	}
 	
 	public static void main(String[] args) throws IllegalArgumentException, Exception {
 		
+		if (args.length != 2) {
+			System.err.println(USAGE);
+			System.exit(-1);
+		}
 		
-		Job seq_builder = getSequenceBuilderJob(args);
+		String input_path = args[0];
+		String working_path = args[1];
 		
-	    System.exit(seq_builder.waitForCompletion(true) ? 0 : 1);
+		System.out.println("Working with input " + input_path + " and writing output data to " + working_path);
 		
+		// builds the "sequence" from the input data (not really)
+		Job seq_builder = getSequenceBuilderJob(input_path, working_path);
+	    if (!seq_builder.waitForCompletion(true))
+	    	System.exit(-1);
+		
+	    // markov chain training
+	    Job markov_trainer = getMarkovChainTrainingJob(working_path);
+	    System.exit(markov_trainer.waitForCompletion(true) ? 0 : 1);
 	}
 }
