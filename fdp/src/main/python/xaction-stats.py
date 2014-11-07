@@ -61,7 +61,7 @@ def seq_gen(customer_id, mat, seq_length):
 					index = j
 					transaction_id = id_generator(14, string.digits)
 
-					print "%s,%s,%s" % (customer_id, transaction_id, STATES[j])
+					print "%s, %s, %s" % (customer_id, transaction_id, STATES[j])
 					break
 
 if __name__ == "__main__":

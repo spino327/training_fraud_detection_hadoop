@@ -29,16 +29,111 @@ package edu.capsl.fdp.training;
  * COVERED CODE IS AUTHORIZED HEREUNDER EXCEPT UNDER THIS DISCLAIMER.
  */
 
+import java.io.IOException;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class MCTraining {
 
 	
-//	class TransactionSequenceMap extends Mapper<LongWritable, Text, Transaction, Text> {
-//		
-//	}
+	public static class TrSeqBuilderMap extends Mapper<LongWritable, Text, CompositeKey, Text> {
+		
+		private final Log LOG = LogFactory.getLog(TrSeqBuilderMap.class);
+		private CompositeKey outkey = new CompositeKey();
+		private Text trType = new Text();
+		
+		@Override
+		protected void map(LongWritable key, Text value,
+				Mapper<LongWritable, Text, CompositeKey, Text>.Context context)
+				throws IOException, InterruptedException {
+
+			// each record has the format cID, tID, tType
+			String[] tokens = value.toString().split(",");
+			
+			if (tokens.length == 3) {
+				String cID = tokens[0].trim();
+				long tID = Long.parseLong(tokens[1].trim());
+				String tType = tokens[2].trim();
+				
+				// creating the composite key
+				outkey.setcID(cID);
+				outkey.settID(tID);
+				
+				// setting the transaction type
+				trType.set(tType);
+				
+				LOG.info("emitting " + outkey + ":" + trType);
+				
+				context.write(outkey, trType);
+				
+			} else {
+				LOG.warn("The tokens' length is not 3, intead is " + tokens.length);
+			}
+		}
+	}
+	
+	public static class TrSeqBuilderRed extends Reducer<CompositeKey, Text, Text, Text> {
+		@Override
+		protected void reduce(CompositeKey key, Iterable<Text> values,
+				Reducer<CompositeKey, Text, Text, Text>.Context context)
+				throws IOException, InterruptedException {
+			
+			System.out.println("Key: " + key.getcID());
+			
+			for (Text val : values)
+				System.out.print(val.toString() + ", ");
+			
+			System.out.println();
+		}
+	}
 	
 	
+	
+	public static Job getSequenceBuilderJob(String[] args) throws IllegalArgumentException, IOException {
+		Configuration conf = new Configuration();
+	    
+	    Job job = new Job(conf);
+	    job.setJobName("SequenceBuilder");
+		job.setJarByClass(MCTraining.class);
+		
+	    // mapper configuration
+	    job.setMapperClass(TrSeqBuilderMap.class);
+	    job.setMapOutputKeyClass(CompositeKey.class);
+	    job.setMapOutputValueClass(Text.class);
+	    
+	    // intermediate
+	    job.setPartitionerClass(CompositeKey.CompositeKeyPartitioner.class);
+	    job.setGroupingComparatorClass(CompositeKey.CompositeKeyGroupComparator.class);
+	    job.setSortComparatorClass(CompositeKey.CompositeKeySortComparator.class);
+	    
+	    // reducer configuration
+	    job.setReducerClass(TrSeqBuilderRed.class);
+	    job.setOutputKeyClass(Text.class);
+	    job.setOutputValueClass(Text.class);
+	    FileInputFormat.addInputPath(job, new Path(args[0]));
+	    
+	    FileOutputFormat.setOutputPath(job,
+	      new Path(args[1]));
+	    
+	    return job;
+	}
+	
+	public static void main(String[] args) throws IllegalArgumentException, Exception {
+		
+		
+		Job seq_builder = getSequenceBuilderJob(args);
+		
+	    System.exit(seq_builder.waitForCompletion(true) ? 0 : 1);
+		
+	}
 }
