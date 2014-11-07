@@ -35,12 +35,12 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
 /**
  * Represents a sampled transition from a sequence of history data.
  */
-public class TransitionWritable implements Writable {
+public class TransitionWritable implements WritableComparable<TransitionWritable> {
 
 	private final Log LOG = LogFactory.getLog(TransitionWritable.class);
 	
@@ -86,5 +86,34 @@ public class TransitionWritable implements Writable {
 		sb.append(future);
 		
 		return sb.toString();
+	}
+
+	@Override
+	public int compareTo(TransitionWritable other) {
+		
+		int cmp = present.compareTo(other.present);
+		if (cmp == 0)
+			return cmp;
+		
+		cmp = future.compareTo(other.future);
+		return cmp;
+	}
+	
+	@Override
+	public int hashCode() {
+		return present.hashCode() + future.hashCode()*17;
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		
+		if (!(obj instanceof TransitionWritable))
+			return false;
+		
+		TransitionWritable other = (TransitionWritable) obj;
+		
+		return present.equals(other.present) & future.equals(other.future);
 	}
 }

@@ -34,6 +34,7 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -87,10 +88,12 @@ public class MCTraining {
 	 * @return Job instance
 	 * @throws IOException
 	 */
-	public static Job getMarkovChainTrainingJob(String working_path) throws IOException {
+	public static Job getMarkovChainTrainingJob(String working_path, String states) throws IOException {
 		
 		Configuration conf = new Configuration();
-	    
+	    		
+		conf.set("mc.states", states);
+		
 	    Job job = new Job(conf);
 	    job.setJobName("Markov chain model training");
 		job.setJarByClass(MCTraining.class);
@@ -102,8 +105,8 @@ public class MCTraining {
 	    
 	    // reducer configuration
 	    job.setReducerClass(MarkovChainModelRed.class);
-	    job.setOutputKeyClass(TransitionWritable.class);
-	    job.setOutputValueClass(IntWritable.class);
+	    job.setOutputKeyClass(NullWritable.class);
+	    job.setOutputValueClass(Text.class);
 	    
 	    String seq_out = (working_path.charAt(working_path.length()-1) == '/' ? "seq_out" : "/seq_out");
 	    FileInputFormat.addInputPath(job, new Path(working_path + seq_out));
@@ -123,6 +126,12 @@ public class MCTraining {
 		
 		String input_path = args[0];
 		String working_path = args[1];
+		String states = "LNL,MNL,HNL,"
+				+ "LHL,MHL,HHL,"
+				+ "LNN,MNN,HNN,"
+				+ "LHN,MHN,HHN,"
+				+ "LNS,MNS,HNS,"
+				+ "LHS,MHS,HHS";
 		
 		System.out.println("Working with input " + input_path + " and writing output data to " + working_path);
 		
@@ -132,7 +141,7 @@ public class MCTraining {
 	    	System.exit(-1);
 		
 	    // markov chain training
-	    Job markov_trainer = getMarkovChainTrainingJob(working_path);
+	    Job markov_trainer = getMarkovChainTrainingJob(working_path, states);
 	    System.exit(markov_trainer.waitForCompletion(true) ? 0 : 1);
 	}
 }
