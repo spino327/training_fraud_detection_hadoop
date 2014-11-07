@@ -32,12 +32,22 @@ def seq_gen(customer_id, mat, seq_length):
 
 	# start with random state, get its index in state array
 	index = random.randrange(state_num)
-	seq = [STATES[index],]
+	#seq = [STATES[index],]
 
 	# get a cumulated sum matrix 
 	cumsum_mat = np.cumsum(mat, axis=1)
+	
+	test_matrix = np.zeros((state_num, state_num))
 
-
+	initial_transaction_id = id_generator(14, string.digits)
+	delta_id = id_generator(2, string.digits)
+	
+	transaction_id = int(initial_transaction_id)
+	
+	current_state = index
+	
+	print "%s, %i, %s" % (customer_id, transaction_id, STATES[index])
+	
 	for i in range(seq_length):
 		# get a random float between [0, 1)
 		rand = random.random()
@@ -46,23 +56,52 @@ def seq_gen(customer_id, mat, seq_length):
 		# if rand > cumulated_sum[j-1] and rand < cumulated_sum[j-1]
 		# then next state index should be 'j'
 		# if j == 0
-		if (rand < cumsum_mat[index][0]):
+		if (rand <= cumsum_mat[index][0]):
 			# next state index
 			index = 0
-			seq.append(STATES[0])
+			#seq.append(STATES[0])
 
 			# transaction_id is random digits only, can be sorted
-			transaction_id = id_generator(14, string.digits)
-			print "%s, %s, %s" % (customer_id, transaction_id, STATES[0])
+			transaction_id = transaction_id + int(delta_id)
+			print "%s, %i, %s" % (customer_id, transaction_id, STATES[0])
 		
 		else: # if j >= 1
 			for j in range(1, state_num):
-				if (rand > cumsum_mat[index][j - 1]) and (rand < cumsum_mat[index][j]):
+				if (rand > cumsum_mat[index][j - 1]) and (rand <= cumsum_mat[index][j]):
 					index = j
-					transaction_id = id_generator(14, string.digits)
-
-					print "%s, %s, %s" % (customer_id, transaction_id, STATES[j])
+					
+					transaction_id = transaction_id + int(delta_id)
+					
+					print "%s, %i, %s" % (customer_id, transaction_id, STATES[j])
 					break
+		
+		test_matrix[current_state][index] += 1
+		current_state = index
+		
+	for row in range(state_num):
+		
+		got_zero = False
+		for col in range(state_num):
+			if test_matrix[row][col] == 0:
+				got_zero = True
+				break
+		
+		if got_zero:
+			for col in range(state_num):
+				test_matrix[row][col] = test_matrix[row][col] + 1
+			
+		
+		sum_row = 0
+		for col in range(state_num): 
+			sum_row = sum_row + test_matrix[row][col]
+		
+		for col in range(state_num):
+			test_matrix[row][col] = test_matrix[row][col]/sum_row
+	
+	output = open("/Users/pinogal/Desktop/tmp_matrix.txt", "w")		
+	output.write("The estimated matrix is:\n")
+	output.write(str(test_matrix))
+	output.close()
 
 if __name__ == "__main__":
 
