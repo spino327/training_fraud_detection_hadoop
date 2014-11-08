@@ -1,6 +1,39 @@
 #/usr/bin/env python
 # -*- coding: utf -*-
 
+#	
+# Copyright (C) 2014 Computer Architecture and Parallel Systems Laboratory (CAPSL)	
+#
+# Original author: Tu Hao	
+# E-Mail: tuhao@udel.edu
+# 
+# Some improvements
+# author: Sergio Pino
+# E-mail: sergiop@udel.edu
+# 
+# License
+# 	
+# Redistribution of this code is allowed only after an explicit permission is
+# given by the original author or CAPSL and this license should be included in
+# all files, either existing or new ones. Modifying the code is allowed, but
+# the original author and/or CAPSL must be notified about these modifications.
+# The original author and/or CAPSL is also allowed to use these modifications
+# and publicly report results that include them. Appropriate acknowledgments
+# to everyone who made the modifications will be added in this case.
+#
+# Warranty	
+#
+# THIS CODE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTY OF ANY KIND,
+# EITHER EXPRESSED OR IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES THAT
+# THE COVERED CODE IS FREE OF DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR
+# PURPOSE OR NON-INFRINGING. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE
+# OF THE COVERED CODE IS WITH YOU. SHOULD ANY COVERED CODE PROVE DEFECTIVE IN
+# ANY RESPECT, YOU (NOT THE INITIAL DEVELOPER OR ANY OTHER CONTRIBUTOR) ASSUME
+# THE COST OF ANY NECESSARY SERVICING, REPAIR OR CORRECTION. THIS DISCLAIMER
+# OF WARRANTY CONSTITUTES AN ESSENTIAL PART OF THIS LICENSE. NO USE OF ANY
+# COVERED CODE IS AUTHORIZED HEREUNDER EXCEPT UNDER THIS DISCLAIMER.
+#
+
 import os
 import sys
 import string
@@ -15,6 +48,7 @@ STATES = ['LNL', 'MNL', 'HNL',
 		'LNS', 'MNS', 'HNS',
 		'LHS', 'MHS', 'HHS']
 
+DEBUG = True
 
 def id_generator(length=10, chars=(string.ascii_uppercase + string.digits)):
 	# return random string
@@ -37,14 +71,14 @@ def seq_gen(customer_id, mat, seq_length):
 	# get a cumulated sum matrix 
 	cumsum_mat = np.cumsum(mat, axis=1)
 	
-	test_matrix = np.zeros((state_num, state_num))
+	if DEBUG:
+		test_matrix = np.zeros((state_num, state_num))
+		current_state = index
 
 	initial_transaction_id = id_generator(14, string.digits)
 	delta_id = id_generator(2, string.digits)
 	
 	transaction_id = int(initial_transaction_id)
-	
-	current_state = index
 	
 	print "%s, %i, %s" % (customer_id, transaction_id, STATES[index])
 	
@@ -75,36 +109,38 @@ def seq_gen(customer_id, mat, seq_length):
 					print "%s, %i, %s" % (customer_id, transaction_id, STATES[j])
 					break
 		
-		test_matrix[current_state][index] += 1
-		current_state = index
+		if DEBUG:
+			test_matrix[current_state][index] += 1
+			current_state = index
 	
 	
-	# Test estimation
-	output = open("tmp_matrix.txt", "w")
-		
-	for row in range(state_num):
-		
-		got_zero = False
-		for col in range(state_num):
-			if test_matrix[row][col] == 0:
-				got_zero = True
-				break
-		
-		if got_zero:
-			output.write("row " + str(row) + " has to use the laplace smoothing function\n")
+	if DEBUG:
+		# Test estimation
+		output = open("../tmp_matrix.txt", "w")
+			
+		for row in range(state_num):
+			
+			got_zero = False
 			for col in range(state_num):
-				test_matrix[row][col] = test_matrix[row][col] + 1
+				if test_matrix[row][col] == 0:
+					got_zero = True
+					break
 			
-		
-		sum_row = sum(test_matrix[row])
-		
-		for col in range(state_num):
-			test_matrix[row][col] = test_matrix[row][col]/sum_row
-	
+			if got_zero:
+				output.write("row " + str(row) + " has to use the laplace smoothing function\n")
+				for col in range(state_num):
+					test_matrix[row][col] = test_matrix[row][col] + 1
+				
 			
-	output.write("The estimated matrix is:\n")
-	output.write(str(test_matrix))
-	output.close()
+			sum_row = sum(test_matrix[row])
+			
+			for col in range(state_num):
+				test_matrix[row][col] = test_matrix[row][col]/sum_row
+		
+				
+		output.write("The estimated matrix is:\n")
+		output.write(str(test_matrix))
+		output.close()
 
 if __name__ == "__main__":
 

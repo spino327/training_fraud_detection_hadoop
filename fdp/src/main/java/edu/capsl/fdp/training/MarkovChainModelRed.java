@@ -92,6 +92,7 @@ public class MarkovChainModelRed extends Reducer<TransitionWritable, IntWritable
 		int sum = 0;
 		for (IntWritable val : values)
 			sum += val.get();
+		
 		LOG.info(key + " " + sum);
 		
 		// adding the sum to the current count on the transition matrix

@@ -39,8 +39,10 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 /**
- * 
- *
+ * Since we used the secondary sort, then we know that the iterable values that enter to the reducer are sorted 
+ * by the transactionID. This is true for every customer. Thus, taking advantage of this, the reducer just sample
+ * the sequence (the sorted values in the iterable, in this implementation you never reconstruct the sequence explicitly)
+ * and outputs to HDFS the transitions that you suppose to be able to build with the sequence.
  */
 public class SequenceBuilderRed extends Reducer<CompositeKey, Text, TransitionWritable, IntWritable> {
 	

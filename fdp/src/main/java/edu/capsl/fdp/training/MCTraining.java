@@ -42,7 +42,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class MCTraining {
 	
-	static String USAGE = "What?";
+	static String USAGE = "hadoop jar PATH_TO_FDP_JAR /input/data/path(can be an hdfs folder) /output/path(has to be an existing folder)";
 	
 	/**
 	 * Returns the job that performers the sequence creation from the transaction input data
@@ -83,8 +83,8 @@ public class MCTraining {
 	/**
 	 * Returns the job that performers the Markov chain training
 	 * 
-	 * @param input String that represents the path in HDFS that has the input dataset
 	 * @param working_path Path in HDFS to store the temporal/output data
+	 * @param states String with the states to be used in the training. It is suppose you know this s before training.
 	 * @return Job instance
 	 * @throws IOException
 	 */

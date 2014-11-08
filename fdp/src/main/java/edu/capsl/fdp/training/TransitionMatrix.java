@@ -74,7 +74,7 @@ public class TransitionMatrix {
 	}
 	
 	public void normalizeRows() {
-		// laplace correction (smoothing function)
+		// laplace smoothing function
 		for (int r = 0; r < numStates; r++) {
 			
 			boolean gotZeroCount = false;
