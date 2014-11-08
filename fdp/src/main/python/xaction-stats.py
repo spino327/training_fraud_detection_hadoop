@@ -27,7 +27,7 @@ def seq_gen(customer_id, mat, seq_length):
 		mat: transtion matrix for this customer
 		seq_length: how many STATES in this sequence
 	'''
-
+	
 	state_num = len(STATES)
 
 	# start with random state, get its index in state array
@@ -77,6 +77,10 @@ def seq_gen(customer_id, mat, seq_length):
 		
 		test_matrix[current_state][index] += 1
 		current_state = index
+	
+	
+	# Test estimation
+	output = open("tmp_matrix.txt", "w")
 		
 	for row in range(state_num):
 		
@@ -87,18 +91,17 @@ def seq_gen(customer_id, mat, seq_length):
 				break
 		
 		if got_zero:
+			output.write("row " + str(row) + " has to use the laplace smoothing function\n")
 			for col in range(state_num):
 				test_matrix[row][col] = test_matrix[row][col] + 1
 			
 		
-		sum_row = 0
-		for col in range(state_num): 
-			sum_row = sum_row + test_matrix[row][col]
+		sum_row = sum(test_matrix[row])
 		
 		for col in range(state_num):
 			test_matrix[row][col] = test_matrix[row][col]/sum_row
 	
-	output = open("/Users/pinogal/Desktop/tmp_matrix.txt", "w")		
+			
 	output.write("The estimated matrix is:\n")
 	output.write(str(test_matrix))
 	output.close()

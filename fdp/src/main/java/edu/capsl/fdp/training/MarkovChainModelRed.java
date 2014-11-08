@@ -30,6 +30,7 @@
 package edu.capsl.fdp.training;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,6 +61,9 @@ public class MarkovChainModelRed extends Reducer<TransitionWritable, IntWritable
 		
 		Configuration conf = context.getConfiguration();
     	states = conf.get("mc.states").split(",");
+    	
+    	LOG.info("Working with  " + states.length + " states : " + Arrays.toString(states));
+    	
     	trans_matrix = new TransitionMatrix(states);		
 	}
 	

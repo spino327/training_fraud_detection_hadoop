@@ -26,8 +26,8 @@ public class MarkovChainModelMap extends Mapper<Object, Text, TransitionWritable
 		
 		if (tokens.length == 3) {
 			
-			out_key.setPresent(tokens[0]);
-			out_key.setFuture(tokens[1]);
+			out_key.setPresent(tokens[0].trim());
+			out_key.setFuture(tokens[1].trim());
 			
 			out_value.set(Integer.parseInt(tokens[2]));
 						

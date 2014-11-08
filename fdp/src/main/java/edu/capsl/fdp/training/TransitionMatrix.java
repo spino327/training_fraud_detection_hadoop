@@ -53,12 +53,16 @@ public class TransitionMatrix {
 		numStates = state_labels.length;
 		
 		transMatrix = new double[numStates][numStates];
-		label_to_pos = new HashMap<String, Integer>(numStates);
+		label_to_pos = new HashMap<String, Integer>();
 		
 		int pos = 0;
 		for (String state : state_labels) {
-			label_to_pos.put(state, pos++);
+			label_to_pos.put(state, pos);
+			LOG.info("label: " + state + " in pos = " + pos);
+			pos++;
 		}
+		
+		LOG.info("creating an " + numStates + "x" + numStates + " transition matrix");
 	}
 
 	public void addTo(String present, String future, int val) {
@@ -71,15 +75,16 @@ public class TransitionMatrix {
 	
 	public void normalizeRows() {
 		// laplace correction (smoothing function)
-		for (int r = 0; r < numStates; ++r) {
+		for (int r = 0; r < numStates; r++) {
 			
 			boolean gotZeroCount = false;
-			for (int c = 0; c < numStates && !gotZeroCount; ++c) {
+			for (int c = 0; c < numStates && !gotZeroCount; c++) {
 				gotZeroCount = transMatrix[r][c] == 0;
 			}
 			
 			if (gotZeroCount) {
-				for (int c = 0; c < numStates; ++c) {
+				LOG.info("row " + r + " has to use the laplace smoothing function");
+				for (int c = 0; c < numStates; c++) {
 					transMatrix[r][c] += 1;
 				}			
 			}
@@ -87,10 +92,10 @@ public class TransitionMatrix {
 		
 		//normalize
 		double rowSum = 0;
-		for (int r = 0; r < numStates; ++r) {
+		for (int r = 0; r < numStates; r++) {
 			double check_sum = 0.0;
 			rowSum = getRowSum(r);
-			for (int c = 0; c < numStates; ++c) {
+			for (int c = 0; c < numStates; c++) {
 				transMatrix[r][c] = transMatrix[r][c] / rowSum;
 				check_sum += transMatrix[r][c];
 			}
@@ -100,7 +105,7 @@ public class TransitionMatrix {
 	
 	public int getRowSum(int row) {
 		int sum = 0;
-		for (int c = 0; c < numStates; ++c) {
+		for (int c = 0; c < numStates; c++) {
 			sum += transMatrix[row][c];
 		}
 		return sum;
@@ -108,7 +113,7 @@ public class TransitionMatrix {
 	
 	public String serializeRow(int row) {
 		StringBuilder stBld = new StringBuilder();
-		for (int c = 0; c < numStates; ++c) {
+		for (int c = 0; c < numStates; c++) {
 			stBld.append(transMatrix[row][c]).append(DELIMETER);
 		}
 		
@@ -118,7 +123,7 @@ public class TransitionMatrix {
 	public void deseralizeRow(String data, int row) {
 		String[] items = data.split(DELIMETER);
 		int k = 0;
-		for (int c = 0; c < numStates; ++c) {
+		for (int c = 0; c < numStates; c++) {
 			transMatrix[row][c]  = Double.parseDouble(items[k++]);
 		}
 	}

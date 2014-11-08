@@ -92,7 +92,7 @@ public class TransitionWritable implements WritableComparable<TransitionWritable
 	public int compareTo(TransitionWritable other) {
 		
 		int cmp = present.compareTo(other.present);
-		if (cmp == 0)
+		if (cmp != 0)
 			return cmp;
 		
 		cmp = future.compareTo(other.future);
@@ -101,7 +101,7 @@ public class TransitionWritable implements WritableComparable<TransitionWritable
 	
 	@Override
 	public int hashCode() {
-		return present.hashCode() + future.hashCode()*17;
+		return (present+future).hashCode();
 	}
 	
 	@Override
