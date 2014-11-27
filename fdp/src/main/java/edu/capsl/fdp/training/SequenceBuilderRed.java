@@ -44,20 +44,21 @@ import org.apache.hadoop.mapreduce.Reducer;
  * the sequence (the sorted values in the iterable, in this implementation you never reconstruct the sequence explicitly)
  * and outputs to HDFS the transitions that you suppose to be able to build with the sequence.
  */
-public class SequenceBuilderRed extends Reducer<CompositeKey, Text, TransitionWritable, IntWritable> {
+public class SequenceBuilderRed extends Reducer<CompositeKey, Text, Text, TransitionWritable> {
 	
 	private final Log LOG = LogFactory.getLog(SequenceBuilderRed.class);
 	
-	private final IntWritable ONE = new IntWritable(1);
-	private TransitionWritable out_key = new TransitionWritable();
+	private TransitionWritable out_val = new TransitionWritable();
 	
 	@Override
 	protected void reduce(CompositeKey key, Iterable<Text> values,
-			Reducer<CompositeKey, Text, TransitionWritable, IntWritable>.Context context)
+			Reducer<CompositeKey, Text, Text, TransitionWritable>.Context context)
 			throws IOException, InterruptedException {
 		
 		Iterator<Text> it = values.iterator();
 		int count = 0;
+				
+		Text cID = key.getcID();
 		
 		// use the iterator to create the transitions
 		if (it.hasNext()) {
@@ -65,14 +66,15 @@ public class SequenceBuilderRed extends Reducer<CompositeKey, Text, TransitionWr
 			String current_state = it.next().toString();
 			while (it.hasNext()) {
 				String next_state = it.next().toString();
-				out_key.setPresent(current_state);
-				out_key.setFuture(next_state);
+				out_val.setPresent(current_state);
+				out_val.setFuture(next_state);
+				out_val.setCount(1);
 				
-				context.write(out_key, ONE);
+				context.write(cID, out_val);
 				current_state = next_state;
 				
 				count++;
-				LOG.debug("transition " + out_key);
+				LOG.debug("ciD " + cID + " transition " + out_val);
 			}
 			
 		}

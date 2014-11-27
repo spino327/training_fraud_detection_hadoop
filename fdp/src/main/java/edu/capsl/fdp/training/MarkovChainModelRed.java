@@ -45,57 +45,55 @@ import org.apache.hadoop.conf.Configuration;
  * 
  * Loosely based on code from project https://github.com/pranab/avenir
  */
-public class MarkovChainModelRed extends Reducer<TransitionWritable, IntWritable, NullWritable, Text> {
+public class MarkovChainModelRed extends Reducer<Text, TransitionWritable, Text, Text> {
 	
 	private final Log LOG = LogFactory.getLog(MarkovChainModelRed.class);
 	
 	private String[] states;
-	private TransitionMatrix trans_matrix;
 	
-	private NullWritable out_key = NullWritable.get();
-	private Text out_value = new Text();
+	private Text out_matrix = new Text();
 	
 	@Override
-	protected void setup(Reducer<TransitionWritable, IntWritable, NullWritable, Text>.Context context)
+	protected void setup(Reducer<Text, TransitionWritable, Text, Text>.Context context)
 			throws IOException, InterruptedException {
 		
 		Configuration conf = context.getConfiguration();
     	states = conf.get("mc.states").split(",");
     	
-    	LOG.info("Working with  " + states.length + " states : " + Arrays.toString(states));
+    	LOG.info("Working with  " + states.length + " states : " + Arrays.toString(states));   
     	
-    	trans_matrix = new TransitionMatrix(states);		
+    	// first record is the states
+    	out_matrix.set(context.getConfiguration().get("mc.states"));
+    	Text tmp_key = new Text("###");
+    	context.write(tmp_key, out_matrix);
 	}
 	
 	@Override
-	protected void cleanup(Reducer<TransitionWritable, IntWritable, NullWritable, Text>.Context context)
+	protected void reduce(Text key, Iterable<TransitionWritable> values,
+			Reducer<Text, TransitionWritable, Text, Text>.Context context)
 			throws IOException, InterruptedException {
 		
-		// first record is the states
-		out_value.set(context.getConfiguration().get("mc.states"));
-		context.write(out_key, out_value);
-
-		// state transitions
+		LOG.info("Processing the sampled transitions for the customer " + key.toString());
+		
+		TransitionMatrix trans_matrix = new TransitionMatrix(states);
+		
+		// Counting the occurrence of the transitions. This builds up the counting on the transition matrix.
+		for (TransitionWritable transition : values) {
+			trans_matrix.addTo(transition.getPresent(), transition.getFuture(), transition.getCount());
+			LOG.info(transition);
+		}
+				
+		StringBuilder sb = new StringBuilder();
+		// Now, lets normalize each row, so that the values in each row sum up to one (by definition this is a probability distribution).
 		trans_matrix.normalizeRows();
+		// state transitions
 		for (int i = 0; i < states.length; i++) {
 			String val = trans_matrix.serializeRow(i);
-			out_value.set(val);
-			context.write(out_key, out_value);
+			sb.append(val).append(";");
 		}
-	}
-	
-	@Override
-	protected void reduce(TransitionWritable key, Iterable<IntWritable> values,
-			Reducer<TransitionWritable, IntWritable, NullWritable, Text>.Context context)
-			throws IOException, InterruptedException {
+		out_matrix.set(sb.toString());
 		
-		int sum = 0;
-		for (IntWritable val : values)
-			sum += val.get();
-		
-		LOG.info(key + " " + sum);
-		
-		// adding the sum to the current count on the transition matrix
-		trans_matrix.addTo(key.getPresent(), key.getFuture(), sum);
+		// The output format should be one transition matrix for each customer_id (you can encode the transition matrix	as a 1d array). I encoded it row-wise each row separated by ';'.
+		context.write(key, out_matrix);
 	}
 }

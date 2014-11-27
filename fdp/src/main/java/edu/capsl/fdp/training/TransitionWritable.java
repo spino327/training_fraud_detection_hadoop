@@ -46,6 +46,7 @@ public class TransitionWritable implements WritableComparable<TransitionWritable
 	
 	private String present;
 	private String future;
+	private int count;
 	
 	public void setPresent(String present) {
 		this.present = present;
@@ -53,6 +54,10 @@ public class TransitionWritable implements WritableComparable<TransitionWritable
 	
 	public void setFuture(String future) {
 		this.future = future;
+	}
+	
+	public void setCount(int count) {
+		this.count = count;
 	}
 	
 	public String getPresent() {
@@ -63,10 +68,15 @@ public class TransitionWritable implements WritableComparable<TransitionWritable
 		return future;
 	}
 	
+	public int getCount() {
+		return count;
+	}
+	
 	@Override
 	public void readFields(DataInput in) throws IOException {
 		present = in.readUTF();
 		future = in.readUTF();
+		count = in.readInt();
 	}
 
 	@Override
@@ -77,13 +87,14 @@ public class TransitionWritable implements WritableComparable<TransitionWritable
 		}
 		out.writeUTF(present);
 		out.writeUTF(future);
+		out.writeInt(count);
 	}
 	
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder(present);
-		sb.append(" ");
-		sb.append(future);
+		sb.append(" ").append(future);
+		sb.append(" ").append(count);
 		
 		return sb.toString();
 	}

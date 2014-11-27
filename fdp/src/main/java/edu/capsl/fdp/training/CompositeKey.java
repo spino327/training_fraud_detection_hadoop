@@ -153,8 +153,7 @@ public class CompositeKey implements WritableComparable<CompositeKey>{
 
 		@Override
 		public int getPartition(CompositeKey key, Text value, int numPartitions) {
-			
-			return (key.hashCode() % numPartitions);
+			return ((key.hashCode() & Integer.MAX_VALUE) % numPartitions);
 		}
 		
 	}

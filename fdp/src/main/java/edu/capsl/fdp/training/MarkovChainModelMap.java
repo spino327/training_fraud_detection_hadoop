@@ -42,35 +42,36 @@ import org.apache.hadoop.mapreduce.Mapper;
  * Just an reconstruct the transition information from the HDFS file of the previous job. 
  * Kind of identity map
  */
-public class MarkovChainModelMap extends Mapper<Object, Text, TransitionWritable, IntWritable> {
+public class MarkovChainModelMap extends Mapper<Object, Text, Text, TransitionWritable> {
 
 	private final Log LOG = LogFactory.getLog(MarkovChainModelMap.class);
 	
-	private TransitionWritable out_key = new TransitionWritable();
-	private IntWritable out_value = new IntWritable();
+	private Text cID = new Text();
+	private TransitionWritable out_value = new TransitionWritable();
 	
 	@Override
 	protected void map(Object key, Text value,
-			Mapper<Object, Text, TransitionWritable, IntWritable>.Context context)
+			Mapper<Object, Text, Text, TransitionWritable>.Context context)
 			throws IOException, InterruptedException {
 		
 		// split by space or tab
 		String[] tokens = value.toString().split("[[ ]*\t]");
 		
-		if (tokens.length == 3) {
+		if (tokens.length == 4) {
 			
 			// TODO the trim is probably not needed
-			out_key.setPresent(tokens[0].trim());
-			out_key.setFuture(tokens[1].trim());
+			cID.set(tokens[0].trim());
 			
-			out_value.set(Integer.parseInt(tokens[2]));
+			out_value.setPresent(tokens[1].trim());
+			out_value.setFuture(tokens[2].trim());
+			out_value.setCount(Integer.parseInt(tokens[3].trim()));
 						
-			context.write(out_key, out_value);
+			context.write(cID, out_value);
 			
-			LOG.info("'" + out_key + "' : " + out_value);
+			LOG.debug("'" + cID + "' : " + out_value);
 			
 		} else
-			LOG.warn("The number of tokens is not 3, instead is " + tokens.length + " for the string " + value);
+			LOG.warn("The number of tokens is not 4, instead is " + tokens.length + " for the string " + value);
 		
 	}
 }

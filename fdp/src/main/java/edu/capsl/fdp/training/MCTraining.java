@@ -42,7 +42,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class MCTraining {
 	
-	static String USAGE = "hadoop jar PATH_TO_FDP_JAR /input/data/path(can be an hdfs folder) /output/path(has to be an existing folder)";
+	static String USAGE = "hadoop jar PATH_TO_FDP_JAR /input/data/path(can be an hdfs folder) "
+			+ "/output/path(has to be an existing folder) "
+			+ "-rsINTEGER <(optional) # reducers for Sequence Builder, default = 1> "
+			+ "-rmINTEGER <(optional) # reducers for the Markov Chain, default = 1>";
 	
 	/**
 	 * Returns the job that performers the sequence creation from the transaction input data
@@ -51,9 +54,9 @@ public class MCTraining {
 	 * @return Job instance
 	 * @throws IOException
 	 */
-	public static Job getSequenceBuilderJob(String input, String working_path) throws IOException {
+	public static Job getSequenceBuilderJob(String input, String working_path, int num_red) throws IOException {
 		Configuration conf = new Configuration();
-	    
+		
 	    Job job = new Job(conf);
 	    job.setJobName("SequenceBuilder");
 		job.setJarByClass(MCTraining.class);
@@ -73,6 +76,7 @@ public class MCTraining {
 	    job.setOutputKeyClass(TransitionWritable.class);
 	    job.setOutputValueClass(IntWritable.class);
 	    FileInputFormat.addInputPath(job, new Path(input));
+	    job.setNumReduceTasks(num_red);
 	    
 	    String tmp_out = (working_path.charAt(working_path.length()-1) == '/' ? "seq_out" : "/seq_out");
 	    FileOutputFormat.setOutputPath(job, new Path(working_path + tmp_out));
@@ -88,7 +92,7 @@ public class MCTraining {
 	 * @return Job instance
 	 * @throws IOException
 	 */
-	public static Job getMarkovChainTrainingJob(String working_path, String states) throws IOException {
+	public static Job getMarkovChainTrainingJob(String working_path, String states, int num_red) throws IOException {
 		
 		Configuration conf = new Configuration();
 	    		
@@ -100,13 +104,14 @@ public class MCTraining {
 		
 	    // mapper configuration
 	    job.setMapperClass(MarkovChainModelMap.class);
-	    job.setMapOutputKeyClass(TransitionWritable.class);
-	    job.setMapOutputValueClass(IntWritable.class);
+	    job.setMapOutputKeyClass(Text.class);
+	    job.setMapOutputValueClass(TransitionWritable.class);
 	    
 	    // reducer configuration
 	    job.setReducerClass(MarkovChainModelRed.class);
-	    job.setOutputKeyClass(NullWritable.class);
+	    job.setOutputKeyClass(Text.class);
 	    job.setOutputValueClass(Text.class);
+	    job.setNumReduceTasks(num_red);
 	    
 	    String seq_out = (working_path.charAt(working_path.length()-1) == '/' ? "seq_out" : "/seq_out");
 	    FileInputFormat.addInputPath(job, new Path(working_path + seq_out));
@@ -119,13 +124,28 @@ public class MCTraining {
 	
 	public static void main(String[] args) throws IllegalArgumentException, Exception {
 		
-		if (args.length != 2) {
+		int num_red_sb = 1;
+		int num_red_mc = 1; 
+		
+		if (args.length < 2 || args.length > 4) {
 			System.err.println(USAGE);
 			System.exit(-1);
 		}
 		
 		String input_path = args[0];
 		String working_path = args[1];
+		
+		for (int i = 2; i < args.length; i++) {
+			String arg = args[i];
+			if (arg.startsWith("-rs")) {
+				num_red_sb = Integer.parseInt(arg.substring(3));
+				System.out.println("Setting the number of reducers for the SequenceBuilder to " + num_red_sb);
+			} else if (arg.startsWith("-rm")) {
+				num_red_mc = Integer.parseInt(arg.substring(3));
+				System.out.println("Setting the number of reducers for the MarkovChain to " + num_red_mc);
+			}
+		}
+		
 		String states = "LNL,MNL,HNL,"
 				+ "LHL,MHL,HHL,"
 				+ "LNN,MNN,HNN,"
@@ -136,12 +156,12 @@ public class MCTraining {
 		System.out.println("Working with input " + input_path + " and writing output data to " + working_path);
 		
 		// builds the "sequence" from the input data (not really)
-		Job seq_builder = getSequenceBuilderJob(input_path, working_path);
+		Job seq_builder = getSequenceBuilderJob(input_path, working_path, num_red_sb);
 	    if (!seq_builder.waitForCompletion(true))
 	    	System.exit(-1);
 		
 	    // markov chain training
-	    Job markov_trainer = getMarkovChainTrainingJob(working_path, states);
+	    Job markov_trainer = getMarkovChainTrainingJob(working_path, states, num_red_mc);
 	    System.exit(markov_trainer.waitForCompletion(true) ? 0 : 1);
 	}
 }
